@@ -90,9 +90,10 @@
   </ul>
 </div>
 
-<h2>Projects</h2>
-
 <h2>School</h2>
+<div class="employer">Bachelor of Science, Computer Science (Honours), Co-op</div>
+
+<div>Skills: HTML, CSS, Angular, Java, SQL, C, Git</div>
 
 <style>
   .employer {
