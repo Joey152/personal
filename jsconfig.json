@@ -1,0 +1,11 @@
+{
+    "compilerOptions": {
+        "baseUrl": "./src",
+        "checkJs": true,
+        "module": "ESNext",
+        "target": "ES6",
+    },
+    "include": [
+        "src"
+    ]
+}
