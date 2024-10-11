@@ -45,3 +45,7 @@ pub fn mmap(address: ?[*]u8, length: usize, prot: usize, flags: linux.MAP, fd: u
         );
     }
 }
+
+pub fn munmap(address: [*]const u8, length: usize) usize {
+    return syscall2(.munmap, @intFromPtr(address), length);
+}

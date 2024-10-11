@@ -57,12 +57,26 @@ pub fn main() !void {
 
     const socket = try posix.socket(address.any.family, posix.SOCK.DGRAM | posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK, posix.IPPROTO.UDP);
 
-    const queue = syscall.mmap(null, ring.sq_off.array, linux.PROT.READ | linux.PROT.WRITE, .{.TYPE = .SHARED, .POPULATE = true}, ring_fd, linux.IORING_OFF_SQ_RING);
-    _ = queue;
+    // Map both sq and cq with IORING_FEAT_SINGLE_MMAP
+    const sring_size = ring.sq_off.array + ring.sq_entries * @sizeOf(u32);
+    const cring_size = ring.cq_off.cqes + ring.cq_entries * @sizeOf(linux.io_uring_cqe);
+    const max = @max(sring_size, cring_size);
 
-    const accept: linux.io_uring_sqe = undefined;
+    const queue = syscall.mmap(null, max, linux.PROT.READ | linux.PROT.WRITE, .{.TYPE = .SHARED, .POPULATE = true}, ring_fd, linux.IORING_OFF_SQ_RING);
+    switch (linux.E.init(queue)) {
+        .SUCCESS => {},
+        else => |err| std.debug.panic("Unable to recover from mmap: {}", .{err}),
+    }
+
+    const sqe = syscall.mmap(null, ring.sq_entries * @sizeOf(linux.io_uring_sqe), linux.PROT.READ | linux.PROT.WRITE, .{.TYPE = .SHARED, .POPULATE = true}, ring_fd, linux.IORING_OFF_SQES);
+    switch (linux.E.init(sqe)) {
+        .SUCCESS => {},
+        else => |err| std.debug.panic("Unable to recover from mmap: {}", .{err}),
+    }
+
+    var accept: linux.io_uring_sqe = undefined;
     accept.prep_socket(address.any.family, posix.SOCK.DGRAM | posix.SOCK.CLOEXEC | posix.SOCK.NONBLOCK, posix.IPPROTO.UDP, 0);
-    syscall.io_uring_enter(ring_fd);
+    //syscall.io_uring_enter(ring_fd, 0, 1, );
 
     var sock_length = address.getOsSockLen();
     try posix.bind(socket, &address.any, sock_length);
@@ -104,7 +118,7 @@ pub fn main() !void {
                     }
                 };
                 _ = readSize;
-                //std.debug.print("buffer, size: {s}, {}\n", .{buffer, readSize});x
+                //std.debug.print("buffer, size: {s}, {}\n", .{buffer, readSize});
                 if (buffer[0] & 0xc0 == 0xc0) {
                     var packet = LongHeaderPacket{
                         .packetType = buffer[0],
